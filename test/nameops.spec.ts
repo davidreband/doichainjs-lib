@@ -1,6 +1,6 @@
 import * as assert from 'assert';
 import ECPairFactory from 'ecpair';
-import { describe, it } from 'mocha';
+import { before, describe, it } from 'mocha';
 import * as ecc from 'tiny-secp256k1';
 import {
   address,
@@ -16,7 +16,6 @@ import * as nameIndexFixtures from './fixtures/nameindex.json';
 import * as fixtures from './fixtures/nameops.json';
 
 const ECPair = ECPairFactory(ecc);
-initEccLib(ecc);
 
 const network = fixtures.network;
 const OPS = bscript.OPS;
@@ -51,6 +50,9 @@ const signAndExtract = (psbtBase64: string, wif: string): Transaction => {
 };
 
 describe('name operations', () => {
+  // Other specs clear the ECC library, so set it before these tests run.
+  before(() => initEccLib(ecc));
+
   describe('nameScriptOwner', () => {
     fixtures.nameScripts.forEach(f => {
       it(`finds the holder's script: ${f.description}`, () => {
