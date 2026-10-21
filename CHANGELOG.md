@@ -1,3 +1,11 @@
+# 7.0.1 (Doichain)
+__added__
+- `payments.p2ms` takes up to 20 public keys, for multisig inside P2WSH
+- `crypto.ripemd160`, `crypto.sha1` and `crypto.sha256` are back
+
+__changed__
+- Based on bitcoinjs-lib 7.0.1, with valibot 1.2. The taproot signature check from 7.0.1 was already here since 7.0.0
+
 # 7.0.0 (Doichain)
 __fixed__
 - `require()` of the CommonJS build works again: bip174 3.0.0
