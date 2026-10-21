@@ -1,4 +1,4 @@
-import { initEccLib } from '../src';
+import { initEccLib } from 'bitcoinjs-lib';
 import { describe, test } from 'mocha';
 import * as assert from 'assert';
 

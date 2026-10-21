@@ -9,8 +9,9 @@
  *
  * @packageDocumentation
  */
-import { hash256 } from './crypto';
-import { Network } from './networks';
+import * as tools from 'uint8array-tools';
+import { hash256 } from './crypto.js';
+import { Network } from './networks.js';
 
 /** How long a request may stay unanswered before it fails, in milliseconds. */
 export const REQUEST_TIMEOUT = 30_000;
@@ -81,7 +82,10 @@ export class ElectrumClient {
   private keepAliveTimer: any;
   private closedOnPurpose = false;
 
-  constructor(readonly url: string, options: ElectrumClientOptions = {}) {
+  constructor(
+    readonly url: string,
+    options: ElectrumClientOptions = {},
+  ) {
     this.timeout = options.timeout ?? REQUEST_TIMEOUT;
     this.keepAliveInterval = options.keepAliveInterval ?? KEEPALIVE_INTERVAL;
     const WebSocketClass = options.webSocket ?? (globalThis as any).WebSocket;
@@ -264,8 +268,8 @@ export const CHECKPOINTS: {
  * @param headerHex - the header as ElectrumX sends it
  */
 export function blockHash(headerHex: string): string {
-  const header = Buffer.from(headerHex.slice(0, 160), 'hex');
-  return Buffer.from(hash256(header)).reverse().toString('hex');
+  const header = tools.fromHex(headerHex.slice(0, 160));
+  return tools.toHex(hash256(header).reverse());
 }
 
 /**

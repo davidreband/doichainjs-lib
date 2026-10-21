@@ -6,7 +6,7 @@
 
 A JavaScript library for [Doichain](https://github.com/Doichain) in Node.js and the browser. It builds, signs and checks addresses, scripts, transactions and PSBTs, including Doichain's name operations. Private keys never leave your code.
 
-doichainjs-lib is a fork of [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) 6.1.6, written in TypeScript. Everything bitcoinjs-lib does works the same way here, including its safety checks for PSBTs. This README covers what Doichain adds.
+doichainjs-lib is a fork of [bitcoinjs-lib](https://github.com/bitcoinjs/bitcoinjs-lib) 7.0.0-rc.0, written in TypeScript. Like bitcoinjs-lib 7, it takes and returns `Uint8Array` instead of `Buffer`, and amounts as `bigint`. It needs Node.js 18 or later. Everything bitcoinjs-lib does works the same way here, including its safety checks for PSBTs. This README covers what Doichain adds.
 
 ## What Doichain adds
 
@@ -56,7 +56,7 @@ psbt.addOutput({
     value,
     address.toOutputScript(holderAddress, networks.doichain),
   ),
-  value: 1_000_000, // locked in the name output
+  value: 1_000_000n, // locked in the name output
 });
 ```
 
@@ -109,11 +109,11 @@ Inputs spent without a witness, including names held by P2PKH addresses, need `n
 
 - [Name operations](guides/name-operations.md): the script layout and its limits, and how to build, spend and trade names.
 - [API reference](https://doichain.github.io/doichainjs-lib/), built from the JSDoc. `npm run doc` writes it to `docs/`.
-- For everything that is not specific to Doichain, the [bitcoinjs-lib documentation](https://bitcoinjs.github.io/bitcoinjs-lib/) and its [examples](https://github.com/bitcoinjs/bitcoinjs-lib/tree/v6.1.6/test/integration) apply.
+- For everything that is not specific to Doichain, the [bitcoinjs-lib documentation](https://bitcoinjs.github.io/bitcoinjs-lib/) and its [examples](https://github.com/bitcoinjs/bitcoinjs-lib/tree/v7.0.0-rc.0/test/integration) apply.
 
 ## Security
 
-- Read bitcoinjs-lib's [usage notes](https://github.com/bitcoinjs/bitcoinjs-lib/tree/v6.1.6#usage) on random numbers, `Buffer` and best practice. They apply here unchanged.
+- Read bitcoinjs-lib's [usage notes](https://github.com/bitcoinjs/bitcoinjs-lib/tree/v7.0.0-rc.0#usage) on random numbers and best practice. They apply here unchanged.
 - Show users a freshly decoded version of every transaction before they sign it, including the name, value and holder of every name output.
 - Keep the PSBT checks on. Signing a non-segwit input without its previous transaction lets a PSBT lie about amounts, and so about the fee.
 - From 6.2.0 on, releases are published by GitHub Actions with npm provenance. `npm audit signatures` checks that the version you installed was built from this repository. Earlier versions were uploaded by hand and carry no provenance.
@@ -123,7 +123,7 @@ Inputs spent without a witness, including names held by P2PKH addresses, need `n
 
 ```bash
 npm ci
-npm run build   # compiles ts_src/ into src/, which is committed too
+npm run build   # compiles ts_src/ into src/esm and src/cjs, which are committed too
 npm run unit    # build, then unit tests
 npm test        # build, format check, lint and coverage
 ```

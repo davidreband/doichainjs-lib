@@ -1,7 +1,7 @@
 import * as assert from 'assert';
 import { describe, it } from 'mocha';
-import { electrum, networks } from '..';
-import { ElectrumClient, WebSocketLike } from '../src/electrum';
+import { electrum, networks } from 'bitcoinjs-lib';
+import { ElectrumClient, WebSocketLike } from 'bitcoinjs-lib/src/electrum';
 
 /** A WebSocket the test drives by hand: open it, fail it, drop it, let the server talk. */
 class FakeWebSocket implements WebSocketLike {

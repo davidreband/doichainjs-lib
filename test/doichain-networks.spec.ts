@@ -3,8 +3,9 @@ import BIP32Factory from 'bip32';
 import ECPairFactory from 'ecpair';
 import { describe, it } from 'mocha';
 import * as ecc from 'tiny-secp256k1';
-import { address, Network, networks, payments } from '..';
-import * as fixtures from './fixtures/nameops.json';
+import * as tools from 'uint8array-tools';
+import { address, Network, networks, payments } from 'bitcoinjs-lib';
+import fixtures from './fixtures/nameops.json';
 
 const bip32 = BIP32Factory(ecc);
 const ECPair = ECPairFactory(ecc);
@@ -97,9 +98,7 @@ describe('Doichain networks', () => {
       network: networks.doichain,
     });
     assert.strictEqual(
-      ECPair.fromWIF(key.toWIF(), networks.doichain).privateKey!.toString(
-        'hex',
-      ),
+      tools.toHex(ECPair.fromWIF(key.toWIF(), networks.doichain).privateKey!),
       '01'.repeat(32),
     );
   });

@@ -1,3 +1,11 @@
+# 7.0.0-rc.0 (Doichain)
+__changed__
+- Based on bitcoinjs-lib 7.0.0-rc.0: every function takes and returns `Uint8Array` instead of `Buffer`, amounts are `bigint`, input checks use valibot, and the package ships ES modules (`src/esm`) next to CommonJS (`src/cjs`). Node.js 18 or later is needed
+- `nameops`, `electrum`, `payments.p2pkhNonstandard` and `payments.p2wpkhNonstandard` take and return `Uint8Array` too; error messages name `Uint8Array` instead of `Buffer`
+
+__known issues__
+- `require()` of the CommonJS build fails, because bip174 3.0.0-rc.0 cannot be required. bitcoinjs-lib 7.0.0 fixes it with bip174 3.0.0; `import` works
+
 # 6.4.0 (Doichain)
 __added__
 - `electrum.ElectrumClient`, a JSON-RPC client for ElectrumX over a WebSocket: requests with a timeout, notifications, a keep-alive ping, and `onclose` for a connection that dropped

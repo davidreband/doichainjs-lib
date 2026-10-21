@@ -46,7 +46,7 @@ const nameScript = nameops.nameDoiScript(
 
 const psbt = new Psbt({ network: networks.doichain });
 psbt.setVersion(0x7100);
-psbt.addOutput({ script: nameScript, value: 1_000_000 });
+psbt.addOutput({ script: nameScript, value: 1_000_000n });
 ```
 
 `nameops.nameDoiScript` writes `OP_NAME_DOI <name> <value> OP_2DROP OP_DROP <owner's script>` and throws if the name or the value is longer than Doichain Core accepts.

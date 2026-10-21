@@ -2,6 +2,7 @@ import * as assert from 'assert';
 import ECPairFactory from 'ecpair';
 import { before, describe, it } from 'mocha';
 import * as ecc from 'tiny-secp256k1';
+import * as tools from 'uint8array-tools';
 import {
   address,
   initEccLib,
@@ -10,25 +11,31 @@ import {
   Psbt,
   script as bscript,
   Transaction,
-} from '..';
-import * as psbtutils from '../src/psbt/psbtutils';
-import * as nameIndexFixtures from './fixtures/nameindex.json';
-import * as fixtures from './fixtures/nameops.json';
+} from 'bitcoinjs-lib';
+import * as psbtutils from 'bitcoinjs-lib/src/psbt/psbtutils';
+import nameIndexFixtures from './fixtures/nameindex.json';
+import fixtures from './fixtures/nameops.json';
 
 const ECPair = ECPairFactory(ecc);
+// The suite below builds P2TR payments while it is being defined
+initEccLib(ecc);
 
 const network = fixtures.network;
 const OPS = bscript.OPS;
 
 const validator = (
-  pubkey: Buffer,
-  msghash: Buffer,
-  signature: Buffer,
+  pubkey: Uint8Array,
+  msghash: Uint8Array,
+  signature: Uint8Array,
 ): boolean => ECPair.fromPublicKey(pubkey).verify(msghash, signature);
 
 /** OP_NAME_DOI <name> <value> OP_2DROP OP_DROP <owner> */
-const nameDoiScript = (name: string, value: string, owner: Buffer): Buffer =>
-  Buffer.concat([
+const nameDoiScript = (
+  name: string,
+  value: string,
+  owner: Uint8Array,
+): Uint8Array =>
+  tools.concat([
     bscript.compile([
       OPS.OP_10,
       Buffer.from(name, 'utf8'),
@@ -57,7 +64,7 @@ describe('name operations', () => {
     fixtures.nameScripts.forEach(f => {
       it(`finds the holder's script: ${f.description}`, () => {
         const owner = nameops.nameScriptOwner(Buffer.from(f.script, 'hex'));
-        assert.strictEqual(owner!.toString('hex'), f.owner);
+        assert.strictEqual(tools.toHex(owner!), f.owner);
       });
     });
 
@@ -103,8 +110,8 @@ describe('name operations', () => {
         network,
       });
       assert.strictEqual(payment.address, legacy.address);
-      assert.ok(payment.hash!.equals(legacy.hash!));
-      assert.ok(payment.output!.equals(heldByLegacy));
+      assert.ok(tools.compare(payment.hash!, legacy.hash!) === 0);
+      assert.ok(tools.compare(payment.output!, heldByLegacy) === 0);
     });
 
     it('p2pkhNonstandard: builds the scriptSig of the holder', () => {
@@ -119,7 +126,7 @@ describe('name operations', () => {
         pubkey: key.publicKey,
         signature,
       });
-      assert.ok(payment.input!.equals(expected.input!));
+      assert.ok(tools.compare(payment.input!, expected.input!) === 0);
     });
 
     it('p2pkhNonstandard: rejects a key that does not hold the name', () => {
@@ -161,7 +168,7 @@ describe('name operations', () => {
         network,
       });
       assert.strictEqual(payment.address, witness.address);
-      assert.ok(payment.output!.equals(heldByWitness));
+      assert.ok(tools.compare(payment.output!, heldByWitness) === 0);
       assert.strictEqual(payment.input!.length, 0);
       assert.deepStrictEqual(payment.witness, [signature, key.publicKey]);
     });
@@ -379,9 +386,9 @@ describe('name operations', () => {
         hash: original.txInputs[f.nameInput].hash,
         index: original.txInputs[f.nameInput].index,
         // a value that is not the real one: the legacy signature would not notice
-        witnessUtxo: { script: prevout.script, value: 1 },
+        witnessUtxo: { script: prevout.script, value: 1n },
       });
-      psbt.addOutput({ script: prevout.script, value: 1 });
+      psbt.addOutput({ script: prevout.script, value: 1n });
       assert.throws(
         () => psbt.signInput(0, holder),
         /has witnessUtxo but non-segwit script/,
@@ -395,7 +402,7 @@ describe('name operations', () => {
         () =>
           psbt.addOutput({
             script: bscript.compile([OPS.OP_RETURN]),
-            value: 0,
+            value: 0n,
           }),
         /Can not modify transaction, signatures exist/,
       );
@@ -420,7 +427,7 @@ describe('name operations', () => {
       ]);
       assert.throws(
         () => payments.p2pkh({ pubkey: notAKey, network }),
-        /isPoint/,
+        /ValiError: Invalid type/,
       );
     });
   });
@@ -440,7 +447,7 @@ describe('name operations', () => {
 
       it(`builds the index script: ${f.description}`, () => {
         assert.strictEqual(
-          nameops.nameIndexScript(name).toString('hex'),
+          tools.toHex(nameops.nameIndexScript(name)),
           f.script,
         );
       });
@@ -470,18 +477,18 @@ describe('name operations', () => {
       );
     });
 
-    it('rejects a name that is neither a Buffer nor a string', () => {
+    it('rejects a name that is neither a Uint8Array nor a string', () => {
       assert.throws(
         () => nameops.nameIndexScript(42 as unknown as string),
-        /Expected the name as a Buffer or a string/,
+        /Expected the name as a Uint8Array or a string/,
       );
     });
   });
 
   describe('building a name output', () => {
     /** The pushes of an OP_NAME_DOI prefix, read byte by byte. */
-    const pushesOf = (script: Buffer): Buffer[] => {
-      const found: Buffer[] = [];
+    const pushesOf = (script: Uint8Array): Uint8Array[] => {
+      const found: Uint8Array[] = [];
       let position = 1;
       while (script[position] !== OPS.OP_2DROP) {
         const opcode = script[position++];
@@ -489,7 +496,7 @@ describe('name operations', () => {
         if (opcode === OPS.OP_PUSHDATA1) {
           length = script[position++];
         } else if (opcode === OPS.OP_PUSHDATA2) {
-          length = script.readUInt16LE(position);
+          length = tools.readUInt16(script, position, 'LE');
           position += 2;
         }
         found.push(script.slice(position, position + length));
@@ -497,8 +504,10 @@ describe('name operations', () => {
       }
       return found;
     };
-    const owner = payments.p2wpkh({ hash: Buffer.alloc(20, 7), network })
-      .output!;
+    const owner = payments.p2wpkh({
+      hash: Buffer.alloc(20, 7),
+      network,
+    }).output!;
 
     [
       ...fixtures.registrations,
@@ -513,42 +522,41 @@ describe('name operations', () => {
         const [name, value] = pushesOf(outputs[0].script);
         const holder = nameops.nameScriptOwner(outputs[0].script)!;
         assert.strictEqual(
-          nameops.nameDoiScript(name, value, holder).toString('hex'),
-          outputs[0].script.toString('hex'),
+          tools.toHex(nameops.nameDoiScript(name, value, holder)),
+          tools.toHex(outputs[0].script),
         );
       });
     });
 
     it('encodes strings as UTF-8, the same as their bytes', () => {
-      assert.ok(
-        nameops
-          .nameDoiScript('münchen', 'wert', owner)
-          .equals(
-            nameops.nameDoiScript(
-              Buffer.from('münchen', 'utf8'),
-              Buffer.from('wert', 'utf8'),
-              owner,
-            ),
+      assert.strictEqual(
+        tools.toHex(nameops.nameDoiScript('münchen', 'wert', owner)),
+        tools.toHex(
+          nameops.nameDoiScript(
+            tools.fromUtf8('münchen'),
+            tools.fromUtf8('wert'),
+            owner,
           ),
+        ),
       );
     });
 
     it('pushes an empty value, so the script still carries a name', () => {
       const script = nameops.nameDoiScript('hello', '', owner);
       assert.strictEqual(
-        script.toString('hex'),
-        '5a0568656c6c6f006d75' + owner.toString('hex'),
+        tools.toHex(script),
+        '5a0568656c6c6f006d75' + tools.toHex(owner),
       );
-      assert.ok(nameops.nameScriptOwner(script)!.equals(owner));
+      assert.ok(tools.compare(nameops.nameScriptOwner(script)!, owner) === 0);
     });
 
     it('pushes a one-byte value instead of writing a number opcode', () => {
       const script = nameops.nameDoiScript('hello', Buffer.from([0x05]), owner);
       assert.strictEqual(
-        script.toString('hex'),
-        '5a0568656c6c6f01056d75' + owner.toString('hex'),
+        tools.toHex(script),
+        '5a0568656c6c6f01056d75' + tools.toHex(owner),
       );
-      assert.ok(nameops.nameScriptOwner(script)!.equals(owner));
+      assert.ok(tools.compare(nameops.nameScriptOwner(script)!, owner) === 0);
     });
 
     it('accepts the longest name and the longest value that can be spent', () => {
@@ -557,9 +565,9 @@ describe('name operations', () => {
         Buffer.alloc(nameops.MAX_VALUE_LENGTH, 0x62),
         owner,
       );
-      assert.strictEqual(script.slice(0, 3).toString('hex'), '5a4cff');
-      assert.strictEqual(script.slice(258, 261).toString('hex'), '4d0802');
-      assert.ok(nameops.nameScriptOwner(script)!.equals(owner));
+      assert.strictEqual(tools.toHex(script.slice(0, 3)), '5a4cff');
+      assert.strictEqual(tools.toHex(script.slice(258, 261)), '4d0802');
+      assert.ok(tools.compare(nameops.nameScriptOwner(script)!, owner) === 0);
     });
 
     it('refuses a name that Doichain Core would reject', () => {
@@ -595,13 +603,13 @@ describe('name operations', () => {
         ]),
         owner,
       ]);
-      assert.ok(nameops.nameScriptOwner(frozen)!.equals(owner));
+      assert.ok(tools.compare(nameops.nameScriptOwner(frozen)!, owner) === 0);
     });
 
     it('refuses an empty owner script and one that carries a name itself', () => {
       assert.throws(
         () => nameops.nameDoiScript('hello', '', Buffer.alloc(0)),
-        /Expected the owner's output script as a Buffer/,
+        /Expected the owner's output script as a Uint8Array/,
       );
       assert.throws(
         () =>
@@ -616,8 +624,8 @@ describe('name operations', () => {
 
     it('does not normalize: "é" as one or as two code points are two names', () => {
       assert.notStrictEqual(
-        nameops.nameDoiScript('café', '', owner).toString('hex'),
-        nameops.nameDoiScript('café', '', owner).toString('hex'),
+        tools.toHex(nameops.nameDoiScript('café', '', owner)),
+        tools.toHex(nameops.nameDoiScript('café', '', owner)),
       );
     });
 

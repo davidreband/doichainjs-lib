@@ -7,9 +7,10 @@
  *
  * @packageDocumentation
  */
-import * as bcrypto from './crypto';
-import { OPS } from './ops';
-import * as pushdata from './push_data';
+import { sha256 } from '@noble/hashes/sha256';
+import * as tools from 'uint8array-tools';
+import { OPS } from './ops.js';
+import * as pushdata from './push_data.js';
 
 /**
  * Opcodes that start a name operation: `OP_NAME_NEW` (`OP_1`),
@@ -55,8 +56,8 @@ const ARGUMENT_COUNTS: Readonly<Record<number, number>> = {
  * @param script - The output script.
  * @returns The owner's script, or `undefined` if the script carries no name.
  */
-export function nameScriptOwner(script: Buffer): Buffer | undefined {
-  if (!Buffer.isBuffer(script) || !NAME_OPCODES.includes(script[0]))
+export function nameScriptOwner(script: Uint8Array): Uint8Array | undefined {
+  if (!(script instanceof Uint8Array) || !NAME_OPCODES.includes(script[0]))
     return undefined;
 
   let position = 1;
@@ -73,15 +74,15 @@ export function nameScriptOwner(script: Buffer): Buffer | undefined {
       length = opcode;
     } else if (opcode === OPS.OP_PUSHDATA1) {
       if (position + 1 > script.length) return undefined;
-      length = script.readUInt8(position);
+      length = tools.readUInt8(script, position);
       position += 1;
     } else if (opcode === OPS.OP_PUSHDATA2) {
       if (position + 2 > script.length) return undefined;
-      length = script.readUInt16LE(position);
+      length = tools.readUInt16(script, position, 'LE');
       position += 2;
     } else if (opcode === OPS.OP_PUSHDATA4) {
       if (position + 4 > script.length) return undefined;
-      length = script.readUInt32LE(position);
+      length = tools.readUInt32(script, position, 'LE');
       position += 4;
     } else {
       return undefined;
@@ -97,17 +98,17 @@ export function nameScriptOwner(script: Buffer): Buffer | undefined {
 }
 
 /** Writes a push the way ElectrumX does: never as a number opcode. */
-function push(data: Buffer): Buffer {
-  const prefix = Buffer.allocUnsafe(pushdata.encodingLength(data.length));
+function push(data: Uint8Array): Uint8Array {
+  const prefix = new Uint8Array(pushdata.encodingLength(data.length));
   pushdata.encode(prefix, data.length, 0);
-  return Buffer.concat([prefix, data]);
+  return tools.concat([prefix, data]);
 }
 
-/** Encodes a string as UTF-8 and passes a Buffer through unchanged. */
-function bytesOf(data: Buffer | string, what: string): Buffer {
-  if (typeof data === 'string') return Buffer.from(data, 'utf8');
-  if (Buffer.isBuffer(data)) return data;
-  throw new TypeError(`Expected the ${what} as a Buffer or a string`);
+/** Encodes a string as UTF-8 and passes bytes through unchanged. */
+function bytesOf(data: Uint8Array | string, what: string): Uint8Array {
+  if (typeof data === 'string') return tools.fromUtf8(data);
+  if (data instanceof Uint8Array) return data;
+  throw new TypeError(`Expected the ${what} as a Uint8Array or a string`);
 }
 
 /** The longest name Doichain Core accepts, in bytes (`MAX_NAME_LENGTH`). */
@@ -159,10 +160,10 @@ export const MAX_VALUE_LENGTH = 520;
  * script is empty or carries a name itself.
  */
 export function nameDoiScript(
-  name: Buffer | string,
-  value: Buffer | string,
-  owner: Buffer,
-): Buffer {
+  name: Uint8Array | string,
+  value: Uint8Array | string,
+  owner: Uint8Array,
+): Uint8Array {
   const nameBytes = bytesOf(name, 'name');
   const valueBytes = bytesOf(value, 'value');
   if (nameBytes.length > MAX_NAME_LENGTH)
@@ -173,16 +174,16 @@ export function nameDoiScript(
     throw new TypeError(
       `The value takes ${valueBytes.length} bytes, more than ${MAX_VALUE_LENGTH}; a name output with a longer value can never be spent`,
     );
-  if (!Buffer.isBuffer(owner) || owner.length === 0)
-    throw new TypeError("Expected the owner's output script as a Buffer");
+  if (!(owner instanceof Uint8Array) || owner.length === 0)
+    throw new TypeError("Expected the owner's output script as a Uint8Array");
   if (nameScriptOwner(owner) !== undefined)
     throw new TypeError("The owner's script carries a name itself");
 
-  return Buffer.concat([
-    Buffer.from([OPS.OP_10]), // OP_NAME_DOI
+  return tools.concat([
+    Uint8Array.from([OPS.OP_10]), // OP_NAME_DOI
     push(nameBytes),
     push(valueBytes),
-    Buffer.from([OPS.OP_2DROP, OPS.OP_DROP]),
+    Uint8Array.from([OPS.OP_2DROP, OPS.OP_DROP]),
     owner,
   ]);
 }
@@ -203,12 +204,12 @@ export function nameDoiScript(
  * @param name - The name, as bytes or as a string.
  * @returns The index script.
  */
-export function nameIndexScript(name: Buffer | string): Buffer {
-  return Buffer.concat([
-    Buffer.from([OPS.OP_3]), // OP_NAME_UPDATE
+export function nameIndexScript(name: Uint8Array | string): Uint8Array {
+  return tools.concat([
+    Uint8Array.from([OPS.OP_3]), // OP_NAME_UPDATE
     push(bytesOf(name, 'name')),
-    push(Buffer.alloc(0)),
-    Buffer.from([OPS.OP_2DROP, OPS.OP_DROP, OPS.OP_RETURN]),
+    push(new Uint8Array(0)),
+    Uint8Array.from([OPS.OP_2DROP, OPS.OP_DROP, OPS.OP_RETURN]),
   ]);
 }
 
@@ -228,8 +229,6 @@ export function nameIndexScript(name: Buffer | string): Buffer {
  * @param name - The name, as bytes or as a string. See {@link nameIndexScript}.
  * @returns The script hash as hex.
  */
-export function nameIndexScriptHash(name: Buffer | string): string {
-  return Buffer.from(bcrypto.sha256(nameIndexScript(name)))
-    .reverse()
-    .toString('hex');
+export function nameIndexScriptHash(name: Uint8Array | string): string {
+  return tools.toHex(sha256(nameIndexScript(name)).reverse());
 }

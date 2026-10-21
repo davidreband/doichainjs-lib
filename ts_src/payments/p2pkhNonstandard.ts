@@ -1,6 +1,6 @@
-import { nameScriptOwner } from '../nameops';
-import { Payment, PaymentOpts } from './index';
-import { p2pkh } from './p2pkh';
+import { nameScriptOwner } from '../nameops.js';
+import { Payment, PaymentOpts } from './index.js';
+import { p2pkh } from './p2pkh.js';
 
 // output: {name operation} {pushes} OP_2DROP/OP_DROP OP_DUP OP_HASH160 {hash160(pubkey)} OP_EQUALVERIFY OP_CHECKSIG
 // input: {signature} {pubkey}
@@ -23,7 +23,7 @@ import { p2pkh } from './p2pkh';
  */
 export function p2pkhNonstandard(a: Payment, opts?: PaymentOpts): Payment {
   const { output, ...holder } = a;
-  let owner: Buffer | undefined;
+  let owner: Uint8Array | undefined;
   if (output !== undefined) {
     owner = nameScriptOwner(output);
     if (!owner) throw new TypeError('Output is not a name script');
