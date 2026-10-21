@@ -1063,6 +1063,20 @@ describe(`Psbt`, () => {
         );
       }, new RegExp('No signatures for this pubkey'));
     });
+
+    it('Correctly validates a signature without tapInternalKey', () => {
+      initEccLib(ecc);
+      const psbt = Psbt.fromBase64(f.psbt);
+      delete psbt.data.inputs[f.index].tapInternalKey;
+      assert.strictEqual(
+        psbt.validateSignaturesOfInput(
+          f.index,
+          schnorrValidator,
+          f.pubkey as any,
+        ),
+        true,
+      );
+    });
   });
 
   describe('validateSignaturesOfTapScriptInput', () => {
