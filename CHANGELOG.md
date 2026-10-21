@@ -1,3 +1,18 @@
+# 7.0.0 (Doichain)
+__fixed__
+- `require()` of the CommonJS build works again: bip174 3.0.0
+- `Transaction` reads and writes the version as an unsigned 32-bit number. Name transactions with version `0x7100` are not affected
+- Validating a taproot key-path signature no longer needs `tapInternalKey` (from bitcoinjs-lib 7.0.1, taken over early)
+
+__added__
+- `toXOnly` is exported
+- `Transaction.stripWitnesses()` removes the witness of every input
+- `initEccLib(eccLib, { DANGER_DO_NOT_VERIFY_ECCLIB: true })` skips the self-test of the ECC library
+
+__changed__
+- Based on bitcoinjs-lib 7.0.0. `OPS` is an enum, and the warning about future segwit versions appears once
+- The audit job and `better-npm-audit` are gone, as in bitcoinjs-lib
+
 # 7.0.0-rc.0 (Doichain)
 __changed__
 - Based on bitcoinjs-lib 7.0.0-rc.0: every function takes and returns `Uint8Array` instead of `Buffer`, amounts are `bigint`, input checks use valibot, and the package ships ES modules (`src/esm`) next to CommonJS (`src/cjs`). Node.js 18 or later is needed

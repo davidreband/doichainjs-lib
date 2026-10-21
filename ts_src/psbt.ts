@@ -48,6 +48,8 @@ import {
 } from './psbt/psbtutils.js';
 import * as tools from 'uint8array-tools';
 
+export { toXOnly };
+
 export interface TransactionInput {
   hash: string | Uint8Array;
   index: number;
